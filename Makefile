@@ -19,7 +19,7 @@ help:
 	$$'    New sessions are named with a current RFC-3339 timestamp.\n'\
 	$$'\n'\
 	$$'make endsession\n'\
-	$$'    Ends the current session by deleting the file `current`.\n'\
+	$$'    Ends the current session by deleting the session file.\n'\
 	$$'\n'\
 	$$'EXAMPLE:\n'\
 	$$'    $$ make launch qjackctl\n'\
@@ -37,20 +37,43 @@ help:
 	$$'The files are named e.g. `qjackctl.out` and `qjackctl.err`.'
 
 
-# timestamp used if there is no current file.
+# timestamp used to initialize the session file
 now := $(shell date --rfc-3339=s | tr \  T)
 
-current = $(shell cat current)
+# These commands are meant to be run
+#   by being included from a subdirectory's Makefile.
 
-# Meant to be run by being included from a subdirectory's Makefile.
+# The $(SESSION_FILE) holds the name of the $(session_dir).
+SESSION_FILE := .makelog_session_default
 
-current:
-	echo "$(now)" > current
-	mkdir "$(now)"
+$(SESSION_FILE):
+	echo "$(now)" > "$(SESSION_FILE)"
+
+
+# At this point we need to create the session directory.
+# Ideally we would only attempt to create it if necessary.
+# However, its name depends on the contents of the SESSION_FILE.
+# This means that we can't make it a target
+#   until after the $(SESSION_FILE) target has been made.
+# Since making always comes after target parsing,
+#   we can't do this without initiating a second expansion.
+# I'm not totally sure that even that is possible,
+#   and it seems pretty complex and crufty.
+# So instead we just always try to create it.
+# This works in a kludgy manner, by defining a target and a variable
+#   which just happen to have the same name,
+#   and storing a lazy evaluation of the file contents in the variable.
+.PHONY: session_dir
+session_dir = $(shell cat $(SESSION_FILE))
+session_dir: $(SESSION_FILE)
+	mkdir -p "$(session_dir)"
+
 
 # launch the specified $(command).
-launch: current
-	$(command) >"$(current)/$(command).out" 2>"$(current)/$(command).err" &
+launch: session_dir
+	$(command) \
+	  >"$(session_dir)/$(command).out" \
+	  2>"$(session_dir)/$(command).err" &
 
 endsession:
-	rm current
+	rm $(SESSION_FILE)

@@ -12,7 +12,7 @@ Running `make help` will give you this informative information:
         New sessions are named with a current RFC-3339 timestamp.
     
     make endsession
-        Ends the current session by deleting the file `current`.
+        Ends the current session by deleting the session file.
     
     EXAMPLE:
         $ make launch qjackctl
